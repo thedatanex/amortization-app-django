@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 DEBUG = False
-ALLOWED_HOSTS = ['syzygy_amortization-app-dj.onrender.com']
+ALLOWED_HOSTS = ['amortization-app-django.onrender.com']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
