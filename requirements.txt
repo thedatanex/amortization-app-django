@@ -3,3 +3,5 @@ gunicorn
 pandas
 numpy
 scikit-learn
+openpyxl
+plotly
