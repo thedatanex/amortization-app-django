@@ -5,3 +5,6 @@ numpy
 scikit-learn
 openpyxl
 plotly
+dj-database-url
+whitenoise
+psycopg2-binary
