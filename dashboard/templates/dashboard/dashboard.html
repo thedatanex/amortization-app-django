@@ -55,6 +55,33 @@
             margin-bottom: 20px;
         }
 
+        /* Uniform layout: overview + amortization side by side */
+        .flex-row-equal {
+            display: flex;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        .flex-row-equal > .card {
+            flex: 1 1 50%;
+            height: 550px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-body-scroll {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .card-body-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .card-body-scroll::-webkit-scrollbar-thumb {
+            background: #b0c4de;
+            border-radius: 10px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -84,53 +111,30 @@
         .hover-highlight { font-weight: bold; color: #1b4f72; }
         .message { text-align: center; margin-bottom: 20px; font-size: 1.1em; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
 
-        .flex-row-equal { display: flex; flex-wrap: wrap; gap: 20px; }
-        .flex-row-equal > .card { flex: 1 1 0; min-width: 380px; min-height: 500px; }
-        .card-body-scroll { overflow-y: auto; max-height: 500px; }
-
         .btn-upload { background: #2575fc; color: #fff; font-weight: 500; transition: 0.3s; border: none; }
         .btn-upload:hover { background: #6a11cb; color: #fff; }
 
         .btn-download {
             background: #2E86C1; color: #fff; font-weight: 500;
-            border: none; width: 200px; margin: 10px auto; display: block;
+            border: none; width: 220px; margin: 10px auto 0 auto; display: block;
         }
         .btn-download:hover { background: #1B4F72; color: #fff; }
 
-        .input-panel label { font-weight: 500; color: #333; font-family: 'Roboto', sans-serif; }
+        .input-panel label { font-weight: 500; color: #333; }
         .input-panel input { font-family: 'Roboto Mono', monospace; font-size: 0.85rem; text-align: right; }
 
-        .card-body-scroll::-webkit-scrollbar { width: 6px; }
-        .card-body-scroll::-webkit-scrollbar-thumb { background: #b0c4de; border-radius: 10px; }
-
-        @media (max-width: 768px) {
-            .flex-row-equal { flex-direction: column; }
-            .flex-row-equal > .card { min-height: 400px; }
+        @media (max-width: 992px) {
+            .flex-row-equal {
+                flex-direction: column;
+            }
+            .flex-row-equal > .card {
+                height: auto;
+            }
         }
 
-        /* Uniform table styling for Overview + Amortization */
-        #overview_table table, #amortization_table table {
-            font-size: 0.85rem;
-            white-space: nowrap;
-            border-radius: 8px;
-            overflow: hidden;
-            background-color: #f7f9fc;
+        #overview_table, #amortization_table {
+            overflow-x: auto;
         }
-        #overview_table th, #overview_table td,
-        #amortization_table th, #amortization_table td {
-            text-align: center;
-            padding: 8px 10px;
-            vertical-align: middle;
-        }
-        #overview_table th, #amortization_table th {
-            background-color: #2E86C1;
-            color: #fff;
-            font-weight: 600;
-        }
-        #overview_table td, #amortization_table td { font-size: 0.85rem; }
-        #overview_table tr:nth-child(even), #amortization_table tr:nth-child(even) { background-color: #f7f9fc; }
-        #overview_table tr:hover, #amortization_table tr:hover { background-color: #e1e9f8; }
-        #overview_table, #amortization_table { overflow-x: auto; }
     </style>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -142,7 +146,7 @@
 <div class="container-fluid">
     <div class="row">
 
-        <!-- Left Column: Data Source Upload -->
+        <!-- Left: Upload -->
         <div class="col-md-3 mb-3">
             <div class="card p-3">
                 <h4 class="section-header">📂 Data Source</h4>
@@ -155,47 +159,49 @@
             </div>
         </div>
 
-        <!-- Right Column: Overview + Amortization -->
-        <div class="col-md-9 flex-row-equal">
-
-            {% if df_all_html %}
-            <div class="card">
-                <h4 class="section-header">📊 Overview</h4>
-                <p class="small-text">Click on Payee ID to generate amortization schedule</p>
-                <div class="card-body card-body-scroll" id="overview_table">
-                    {{ df_all_html|safe }}
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="card" id="amortization_card" style="display:none;">
-                <h4 class="section-header">💰 Amortization Schedule for <span id="selected_payee"></span></h4>
-
-                <div class="input-panel mb-3">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label>Total Incentive:</label>
-                            <input type="number" id="adj_total_incentive" class="form-control" step="0.01">
-                        </div>
-                        <div class="col-md-3">
-                            <label>Cap %:</label>
-                            <input type="number" id="adj_cap_percent" class="form-control" step="0.01" value="100">
-                        </div>
-                        <div class="col-md-3">
-                            <label>Term (Months):</label>
-                            <input type="number" id="adj_term" class="form-control" value="12">
-                        </div>
-                        <div class="col-md-3">
-                            <label>Payment Start Date:</label>
-                            <input type="date" id="adj_start_date" class="form-control">
-                        </div>
+        <!-- Right: Overview + Amortization -->
+        <div class="col-md-9">
+            <div class="flex-row-equal">
+                {% if df_all_html %}
+                <div class="card">
+                    <h4 class="section-header">📊 Overview</h4>
+                    <p class="small-text text-center">Click on Payee ID to generate amortization schedule</p>
+                    <div class="card-body card-body-scroll" id="overview_table">
+                        {{ df_all_html|safe }}
                     </div>
                 </div>
+                {% endif %}
 
-                <div class="card-body card-body-scroll" id="amortization_table"></div>
-                <button class="btn btn-download" id="download_amortization" style="display:none;">📥 Download Amortization CSV</button>
+                <div class="card" id="amortization_card" style="display:none;">
+                    <h4 class="section-header">💰 Amortization Schedule for <span id="selected_payee"></span></h4>
+
+                    <div class="input-panel mb-3 mt-2">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label>Total Incentive:</label>
+                                <input type="number" id="adj_total_incentive" class="form-control" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Cap %:</label>
+                                <input type="number" id="adj_cap_percent" class="form-control" step="0.01" value="100">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Term (Months):</label>
+                                <input type="number" id="adj_term" class="form-control" value="12">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Payment Start Date:</label>
+                                <input type="date" id="adj_start_date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body card-body-scroll" id="amortization_table"></div>
+
+                    <!-- Download button moved to bottom -->
+                    <button class="btn btn-download" id="download_amortization" style="display:none;">📥 Download Amortization CSV</button>
+                </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -217,9 +223,9 @@ $(document).ready(function(){
                             $("#amortization_table").html(response.html);
                             $("#amortization_card").show();
                             $("#download_amortization").show();
-                            $("#adj_total_incentive").val(response.summary.total_incentive);
-                            $("#adj_cap_percent").val(response.summary.cap_percent);
-                            $("#adj_term").val(response.summary.term);
+                            $("#adj_total_incentive").val(response.summary["Total Incentive"]);
+                            $("#adj_cap_percent").val(response.summary["Cap %"]);
+                            $("#adj_term").val(response.summary["Term (Months)"]);
                             $("#adj_start_date").val(new Date().toISOString().split('T')[0]);
                         } else { alert(response.message); }
                     }
@@ -235,8 +241,18 @@ $(document).ready(function(){
         var start_date = $("#adj_start_date").val();
         $.ajax({
             url: "{% url 'generate_amortization' %}",
-            data: { "payee_id": payee_id, "total_incentive": total_incentive, "cap_percent": cap_percent, "term": term, "payment_start_date": start_date },
-            success: function(response){ if(response.status === "success"){ $("#amortization_table").html(response.html); } }
+            data: {
+                "payee_id": payee_id,
+                "total_incentive": total_incentive,
+                "cap_percent": cap_percent,
+                "term": term,
+                "payment_start_date": start_date
+            },
+            success: function(response){
+                if(response.status === "success"){
+                    $("#amortization_table").html(response.html);
+                }
+            }
         });
     }
 
@@ -246,14 +262,34 @@ $(document).ready(function(){
     });
 
     $("#download_amortization").click(function(){
-        var csvData = $("#amortization_table table").tableToCSV();
-        var blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "amortization_" + $("#selected_payee").text() + ".csv";
+        const table = $("#amortization_table table");
+        if (!table.length) {
+            alert("No amortization table available to download.");
+            return;
+        }
+
+        let csv = [];
+        table.find("tr").each(function(){
+            let row = [];
+            $(this).find("th, td").each(function(){
+                let text = $(this).text().trim().replace(/"/g, '""');
+                row.push('"' + text + '"');
+            });
+            csv.push(row.join(","));
+        });
+
+        const csvContent = csv.join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "Amortization_Schedule_" + $("#selected_payee").text() + ".csv");
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     });
 });
 </script>
+
 </body>
 </html>
