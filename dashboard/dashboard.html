@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>💼 Incentive & Amortization Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body { background: linear-gradient(to right, #6a11cb, #2575fc); font-family: 'Roboto', sans-serif; padding: 20px; min-height: 100vh; }
+        h1 { color: #ffffff; margin-bottom: 40px; text-align: center; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); font-weight: 700; }
+        h4.section-header { text-align: center; font-weight: 600; font-size: 1.4rem; color: #fff; background-color: #2E86C1; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
+        h5.section-sub { text-align: center; font-weight: 500; font-size: 1.1rem; color: #1B4F72; margin-top: 10px; margin-bottom: 10px; }
+        .card { border-radius: 15px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); background-color: #ffffff; color: #333; padding: 15px; margin-bottom: 20px; }
+        .flex-row-equal { display: flex; gap: 20px; align-items: stretch; }
+        .flex-row-equal > .card { flex: 1 1 50%; height: 550px; display: flex; flex-direction: column; }
+        .card-body-scroll { overflow-y: auto; flex-grow: 1; }
+        .card-body-scroll::-webkit-scrollbar { width: 6px; }
+        .card-body-scroll::-webkit-scrollbar-thumb { background: #b0c4de; border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; font-family: 'Roboto Mono', monospace; font-size: 0.85rem; text-align: center; white-space: nowrap; border-radius: 8px; overflow: hidden; background-color: #f7f9fc; }
+        th, td { padding: 8px 10px; vertical-align: middle; }
+        th { background-color: #2E86C1; color: #fff; font-weight: 600; }
+        tr:nth-child(even) { background-color: #f7f9fc; }
+        tr:hover { background-color: #e1e9f8; cursor: pointer; }
+        .hover-highlight { font-weight: bold; color: #1b4f72; }
+        .message { text-align: center; margin-bottom: 20px; font-size: 1.1em; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .btn-upload { background: #2575fc; color: #fff; font-weight: 500; transition: 0.3s; border: none; }
+        .btn-upload:hover { background: #6a11cb; color: #fff; }
+        .btn-download { background: #2E86C1; color: #fff; font-weight: 500; border: none; width: 220px; margin: 10px auto 0 auto; display: block; }
+        .btn-download:hover { background: #1B4F72; color: #fff; }
+        .input-panel label { font-weight: 500; color: #333; }
+        .input-panel input { font-family: 'Roboto Mono', monospace; font-size: 0.85rem; text-align: right; }
+        @media (max-width: 992px) { .flex-row-equal { flex-direction: column; } .flex-row-equal > .card { height: auto; } }
+        #overview_table, #amortization_table { overflow-x: auto; }
+        .ai-fraud-explanation { background-color: #f0f8ff; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.95rem; }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<h1>💼 Incentive & Amortization Dashboard</h1>
+<p class="message">{{ message }}</p>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Left: Upload -->
+        <div class="col-md-3 mb-3">
+            <div class="card p-3">
+                <h4 class="section-header">📂 Data Source</h4>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" name="data_file" class="form-control mb-2">
+                    <button type="submit" class="btn btn-upload w-100">Upload</button>
+                </form>
+                <p class="small-text mt-2">Upload multiple data sources here in the future.</p>
+            </div>
+        </div>
+
+        <!-- Right: Overview + Amortization -->
+        <div class="col-md-9">
+            <div class="flex-row-equal">
+                {% if df_all_html %}
+                <div class="card">
+                    <h4 class="section-header">📊 Overview</h4>
+                    <p class="small-text text-center">Click on Payee ID to generate amortization schedule</p>
+                    <div class="card-body card-body-scroll" id="overview_table">
+                        {{ df_all_html|safe }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card" id="amortization_card" style="display:none;">
+                    <h4 class="section-header">💰 Amortization Schedule for <span id="selected_payee"></span></h4>
+
+                    <div class="input-panel mb-3 mt-2">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label>Total Incentive:</label>
+                                <input type="number" id="adj_total_incentive" class="form-control" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Cap %:</label>
+                                <input type="number" id="adj_cap_percent" class="form-control" step="0.01" value="100">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Term (Months):</label>
+                                <input type="number" id="adj_term" class="form-control" value="12">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Payment Start Date:</label>
+                                <input type="date" id="adj_start_date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body card-body-scroll" id="amortization_table"></div>
+                    <button class="btn btn-download" id="download_amortization" style="display:none;">📥 Download Amortization CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= New AI Fraud Detection Section ================= -->
+    <div class="card mt-4">
+        <div class="card-header" id="fraudDetectionHeader">
+            <h4 class="section-header mb-0">
+                <button class="btn btn-primary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#fraudDetectionBody" aria-expanded="false" aria-controls="fraudDetectionBody">
+                    🤖 AI Fraud Detection
+                </button>
+            </h4>
+        </div>
+        <div id="fraudDetectionBody" class="collapse" aria-labelledby="fraudDetectionHeader">
+            <div class="card-body">
+                <div class="ai-fraud-explanation">
+                    <strong>Scenario:</strong> This AI Fraud Detection demonstrates how unusual incentive payouts are flagged.
+                    Each transaction is scored (0–1) by an AI model; higher scores indicate more anomalous transactions.
+                    <br><br>
+                    <strong>Anomaly Score Formula (simplified):</strong>
+                    <br>
+                    <code>anomaly_score = 1 - IsolationForest.predict_score(transaction_features)</code>
+                    <br>
+                    Transactions with scores above a threshold (e.g., 0.7) are flagged for review.
+                </div>
+
+                <p class="text-center">Visualize AI-based anomaly detection results below:</p>
+                <canvas id="fraudChart" width="400" height="150"></canvas>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped table-bordered" id="fraudTable">
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Payee</th>
+                                <th>Amount</th>
+                                <th>Anomaly Score</th>
+                                <th>Flagged</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function(){
+    // ================= Existing Amortization JS =================
+    $("#overview_table td").each(function(){
+        var text = $(this).text();
+        if ({{ payee_options|safe }}.includes(text)) {
+            $(this).addClass("hover-highlight");
+            $(this).click(function(){
+                var payee_id = $(this).text();
+                $("#selected_payee").text(payee_id);
+                $.ajax({
+                    url: "{% url 'generate_amortization' %}",
+                    data: { "payee_id": payee_id },
+                    success: function(response){
+                        if(response.status === "success"){
+                            $("#amortization_table").html(response.html);
+                            $("#amortization_card").show();
+                            $("#download_amortization").show();
+                            $("#adj_total_incentive").val(response.summary["Total Incentive"]);
+                            $("#adj_cap_percent").val(response.summary["Cap %"]);
+                            $("#adj_term").val(response.summary["Term (Months)"]);
+                            $("#adj_start_date").val(new Date().toISOString().split('T')[0]);
+                        } else { alert(response.message); }
+                    }
+                });
+            });
+        }
+    });
+
+    function refreshAmortization(payee_id) {
+        var total_incentive = $("#adj_total_incentive").val();
+        var cap_percent = $("#adj_cap_percent").val();
+        var term = $("#adj_term").val();
+        var start_date = $("#adj_start_date").val();
+        $.ajax({
+            url: "{% url 'generate_amortization' %}",
+            data: {
+                "payee_id": payee_id,
+                "total_incentive": total_incentive,
+                "cap_percent": cap_percent,
+                "term": term,
+                "payment_start_date": start_date
+            },
+            success: function(response){
+                if(response.status === "success"){
+                    $("#amortization_table").html(response.html);
+                }
+            }
+        });
+    }
+
+    $("#adj_total_incentive, #adj_cap_percent, #adj_term, #adj_start_date").on("input change", function(){
+        var payee_id = $("#selected_payee").text();
+        if(payee_id) refreshAmortization(payee_id);
+    });
+
+    $("#download_amortization").click(function(){
+        const table = $("#amortization_table table");
+        if (!table.length) {
+            alert("No amortization table available to download.");
+            return;
+        }
+
+        let csv = [];
+        table.find("tr").each(function(){
+            let row = [];
+            $(this).find("th, td").each(function(){
+                let text = $(this).text().trim().replace(/"/g, '""');
+                row.push('"' + text + '"');
+            });
+            csv.push(row.join(","));
+        });
+
+        const csvContent = csv.join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "Amortization_Schedule_" + $("#selected_payee").text() + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // ================= New AI Fraud Detection JS =================
+    var fraudChartInstance;
+    var fraudDataLoaded = false;
+
+    $('#fraudDetectionBody').on('shown.bs.collapse', function () {
+        if (!fraudDataLoaded) {
+            $.ajax({
+                url: "{% url 'get_fraud_data' %}",
+                method: 'GET',
+                success: function(data){
+                    // Draw Chart
+                    const ctx = document.getElementById('fraudChart').getContext('2d');
+                    fraudChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Anomaly Score',
+                                data: data.scores,
+                                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: { y: { beginAtZero: true, max: 1 } }
+                        }
+                    });
+
+                    // Populate table
+                    var tbody = $('#fraudTable tbody');
+                    tbody.empty();
+                    data.records.forEach(function(row){
+                        tbody.append(
+                            `<tr>
+                                <td>${row.transaction_id}</td>
+                                <td>${row.payee}</td>
+                                <td>${row.amount}</td>
+                                <td>${row.anomaly_score}</td>
+                                <td>${row.flagged}</td>
+                            </tr>`
+                        );
+                    });
+
+                    fraudDataLoaded = true;
+                },
+                error: function(err){
+                    alert("Failed to load AI Fraud data.");
+                }
+            });
+        }
+    });
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
